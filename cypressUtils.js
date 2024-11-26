@@ -78,6 +78,69 @@ export default class Utils {
         cy.get(selectorMap.result).should('be.visible');
       });
     }
+
+    static testAdvancedSqlInjectionLogin(selectorMap) {
+      const advancedPayloads = [
+        // Bypassing authentication
+        "admin' --",
+        "admin' #",
+        "' OR 1=1 LIMIT 1 --",
+      
+        // Time-based blind SQL Injection
+        "' OR IF(LENGTH(database())=1, SLEEP(5), 0) --",
+        "' OR IF(SUBSTRING(database(),1,1)='a', SLEEP(5), 0) --",
+      
+        // Extracting database information
+        "' UNION SELECT @@version, NULL, NULL --",
+        "' UNION SELECT user(), NULL, NULL --",
+        "' UNION SELECT database(), NULL, NULL --",
+      
+        // More complex nested queries
+        "' OR (SELECT 1 FROM (SELECT COUNT(*), CONCAT((SELECT database()), 0x7A, FLOOR(RAND(0)*2)) x FROM information_schema.tables GROUP BY x) y) --",
+      
+        // Stacked queries
+        "; DROP TABLE users --",
+        "; UPDATE users SET password='hacked' --",
+      
+        // XML-based SQL Injection
+        "'; IF (LEN(USER)>0) WAITFOR DELAY '0:0:10' --",
+      
+        // JSON-based Injection
+        "' || (SELECT TOP 1 name FROM sys.databases) --",
+      
+        // Conditional-based Injection
+        "' OR ASCII(SUBSTRING((SELECT @@version),1,1)) = 49 --",
+      
+        // Multi-byte character injection
+        "CONV('a', 16, 2)", 
+        "' UNION SELECT 1, 2, LOAD_FILE('/etc/passwd') --"
+      ];
+    
+      advancedPayloads.forEach((payload) => {
+        cy.log(`ADVANCED PAYLOAD: ${payload}`);
+    
+        if (selectorMap.email) {
+          cy.get(selectorMap.email).clear().type(payload);
+        }
+    
+        if (selectorMap.password) {
+          cy.get(selectorMap.password).clear().type('password');
+        }
+    
+        if (selectorMap.otherFields) {
+          selectorMap.otherFields.forEach(field => {
+            cy.get(field.selector).clear().type(field.value);
+          });
+        }
+    
+        cy.get(selectorMap.submit).click();
+        
+        cy.get(selectorMap.result)
+          .should('be.visible')
+          .and('not.contain', 'error')
+          .and('not.contain', 'database');
+      });
+    }
   
     static verifyElementStatus(selector, statusType) {
       switch (statusType) {
