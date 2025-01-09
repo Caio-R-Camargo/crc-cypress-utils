@@ -166,6 +166,12 @@ export default class Utils {
     cy.get('[role="row"]').find(`div:contains("${value}"):visible`)
   }
 
+  static validateTd(value) {
+    cy.get('tr')
+      .find(`td:contains("${value}")`)
+      .should('be.visible');
+  }  
+
   static generateRandomNumber(length) {
     const allowedDigits = '123456789';
     let randomNumber = '';
